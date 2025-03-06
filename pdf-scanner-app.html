@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prosty Skaner PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .drop-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #f7fbff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .drop-area:hover, .drop-area.dragover {
+            background-color: #e1f0fa;
+            border-color: #2980b9;
+        }
+        .drop-area p {
+            margin: 10px 0;
+            color: #7f8c8d;
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            display: inline-block;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .settings {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+        .settings h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .preview-container {
+            margin-top: 20px;
+        }
+        .preview-image {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .image-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .image-item {
+            position: relative;
+            width: 150px;
+        }
+        .image-item img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #e2f3f5;
+            color: #0c606e;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .progress-container {
+            margin-top: 15px;
+            display: none;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #3498db;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prosty Skaner PDF</h1>
+        
+        <div class="drop-area" id="dropArea">
+            <img src="skaner.png" alt="Ikona skanera" style="margin-bottom: 15px;" width="100px" height="100px">
+            <h3>Przeciągnij i upuść pliki lub zdjęcia tutaj</h3>
+            <p>lub</p>
+            <label class="btn" for="fileInput">Wybierz pliki</label>
+            <input type="file" id="fileInput" class="file-input" accept="image/*" multiple>
+            <p class="mt-2">Obsługiwane formaty: JPG, PNG, GIF, BMP</p>
+        </div>
+        
+        <div class="image-list" id="imageList">
+            <!-- Tutaj pojawią się dodane obrazy -->
+        </div>
+        
+        <div class="settings">
+            <h3>Ustawienia PDF</h3>
+            <div class="form-group">
+                <label for="pdfName">Nazwa pliku PDF:</label>
+                <input type="text" id="pdfName" class="form-control" placeholder="Mój dokument" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div class="form-group">
+                <label for="orientation">Orientacja:</label>
+                <select id="orientation" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="portrait">Pionowa</option>
+                    <option value="landscape">Pozioma</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="quality">Jakość:</label>
+                <select id="quality" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="high">Wysoka</option>
+                    <option value="medium" selected>Średnia</option>
+                    <option value="low">Niska</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="pageSize">Rozmiar strony:</label>
+                <select id="pageSize" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="a4">A4</option>
+                    <option value="a5">A5</option>
+                    <option value="letter">Letter</option>
+                    <option value="legal">Legal</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">Przetwarzanie: 0%</div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="createPdfBtn" class="btn" disabled>Stwórz PDF</button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+    
+    <div class="footer">
+        <p>Prosty Skaner PDF - Twórz dokumenty PDF z łatwością</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const { jsPDF } = window.jspdf;
+            
+            const dropArea = document.getElementById('dropArea');
+            const fileInput = document.getElementById('fileInput');
+            const imageList = document.getElementById('imageList');
+            const createPdfBtn = document.getElementById('createPdfBtn');
+            const statusDiv = document.getElementById('status');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            let imageFiles = [];
+            let processedImages = [];
+            
+            // Obsługa przeciągania i upuszczania
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.classList.add('dragover');
+            }
+            
+            function unhighlight() {
+                dropArea.classList.remove('dragover');
+            }
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const newFiles = dt.files;
+                handleFiles(newFiles);
+            }
+            
+            fileInput.addEventListener('change', function() {
+                handleFiles(this.files);
+            });
+            
+            function handleFiles(newFiles) {
+                const validFiles = Array.from(newFiles).filter(file => {
+                    return file.type.match(/image.*/);
+                });
+                
+                if (validFiles.length === 0) {
+                    showStatus('Proszę wybrać pliki graficzne (JPG, PNG, GIF, BMP)', 'error');
+                    return;
+                }
+                
+                validFiles.forEach(file => {
+                    const fileExists = imageFiles.some(existingFile => 
+                        existingFile.name === file.name && 
+                        existingFile.size === file.size && 
+                        existingFile.lastModified === file.lastModified
+                    );
+                    
+                    if (!fileExists) {
+                        imageFiles.push(file);
+                        addImageToList(file);
+                    }
+                });
+                
+                updateCreateButtonState();
+            }
+            
+            function addImageToList(file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function() {
+                    const imageItem = document.createElement('div');
+                    imageItem.className = 'image-item';
+                    
+                    // Generuj unikalny identyfikator dla obrazu
+                    const imageId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    imageItem.dataset.id = imageId;
+                    
+                    const img = document.createElement('img');
+                    img.src = reader.result;
+                    img.alt = file.name;
+                    
+                    // Zachowaj obraz i jego dane
+                    processedImages.push({
+                        id: imageId,
+                        file: file,
+                        dataUrl: reader.result
+                    });
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-btn';
+                    removeBtn.innerHTML = '×';
+                    removeBtn.addEventListener('click', function() {
+                        // Usuń obraz z obu tablic
+                        const id = imageItem.dataset.id;
+                        imageFiles = imageFiles.filter(f => f !== file);
+                        processedImages = processedImages.filter(img => img.id !== id);
+                        
+                        imageItem.remove();
+                        updateCreateButtonState();
+                    });
+                    
+                    imageItem.appendChild(img);
+                    imageItem.appendChild(removeBtn);
+                    imageList.appendChild(imageItem);
+                }
+            }
+            
+            function updateCreateButtonState() {
+                createPdfBtn.disabled = imageFiles.length === 0;
+            }
+            
+            createPdfBtn.addEventListener('click', function() {
+                createPDF();
+            });
+            
+            function createPDF() {
+                if (imageFiles.length === 0) {
+                    showStatus('Proszę dodać przynajmniej jeden obraz.', 'error');
+                    return;
+                }
+                
+                const pdfName = document.getElementById('pdfName').value || 'Mój dokument';
+                const orientation = document.getElementById('orientation').value;
+                const quality = document.getElementById('quality').value;
+                const pageSize = document.getElementById('pageSize').value;
+                
+                // Przygotowanie
+                createPdfBtn.disabled = true;
+                showStatus('Tworzenie PDF...', 'loading');
+                progressContainer.style.display = 'block';
+                updateProgress(0);
+                
+                // Utwórz nowy dokument PDF
+                const pdf = new jsPDF({
+                    orientation: orientation,
+                    unit: 'mm',
+                    format: pageSize
+                });
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 10; // margines 10mm
+                
+                // Oblicz szerokość i wysokość obszaru roboczego
+                const contentWidth = pageWidth - (2 * margin);
+                const contentHeight = pageHeight - (2 * margin);
+                
+                // Funkcja dodająca obraz do strony
+                const addImageToPdf = (index) => {
+                    if (index >= processedImages.length) {
+                        // Zakończono dodawanie wszystkich obrazów
+                        finalizePdf();
+                        return;
+                    }
+                    
+                    const imageData = processedImages[index];
+                    const img = new Image();
+                    img.src = imageData.dataUrl;
+                    
+                    img.onload = function() {
+                        // Dodaj nową stronę dla każdego obrazu oprócz pierwszego
+                        if (index > 0) {
+                            pdf.addPage();
+                        }
+                        
+                        // Oblicz proporcje obrazu
+                        const imgRatio = img.width / img.height;
+                        
+                        // Oblicz wymiary, aby obraz zmieścił się na stronie zachowując proporcje
+                        let imgWidth = contentWidth;
+                        let imgHeight = imgWidth / imgRatio;
+                        
+                        if (imgHeight > contentHeight) {
+                            imgHeight = contentHeight;
+                            imgWidth = imgHeight * imgRatio;
+                        }
+                        
+                        // Wyśrodkuj obraz na stronie
+                        const x = margin + (contentWidth - imgWidth) / 2;
+                        const y = margin + (contentHeight - imgHeight) / 2;
+                        
+                        // Dodaj obraz do PDF
+                        pdf.addImage(img, 'JPEG', x, y, imgWidth, imgHeight, null, 
+                            quality === 'high' ? 'FAST' : (quality === 'low' ? 'SLOW' : 'MEDIUM'));
+                        
+                        // Aktualizuj pasek postępu
+                        const progress = (index + 1) / processedImages.length * 100;
+                        updateProgress(progress);
+                        
+                        // Przejdź do następnego obrazu
+                        setTimeout(() => {
+                            addImageToPdf(index + 1);
+                        }, 100); // Małe opóźnienie dla lepszej wizualizacji postępu
+                    };
+                    
+                    img.onerror = function() {
+                        showStatus(`Błąd podczas przetwarzania obrazu: ${imageData.file.name}`, 'error');
+                        updateProgress((index + 1) / processedImages.length * 100);
+                        
+                        // Przejdź do następnego obrazu mimo błędu
+                        setTimeout(() => {
+                            addImageToPdf(index + 1);
+                        }, 100);
+                    };
+                };
+                
+                // Funkcja finalizująca PDF
+                const finalizePdf = () => {
+                    // Zapisz PDF
+                    pdf.save(`${pdfName}.pdf`);
+                    
+                    // Zakończenie i resetowanie stanu
+                    createPdfBtn.disabled = false;
+                    showStatus(`PDF "${pdfName}.pdf" został utworzony pomyślnie!`, 'success');
+                    updateProgress(100);
+                    
+                    // Ukryj pasek postępu po 3 sekundach
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                    }, 3000);
+                };
+                
+                // Rozpocznij dodawanie obrazów
+                addImageToPdf(0);
+            }
+            
+            function updateProgress(percent) {
+                const roundedPercent = Math.round(percent);
+                progressBar.style.width = roundedPercent + '%';
+                progressText.textContent = `Przetwarzanie: ${roundedPercent}%`;
+            }
+            
+            function showStatus(message, type) {
+                statusDiv.textContent = message;
+                statusDiv.className = 'status ' + type;
+                statusDiv.style.display = 'block';
+                
+                if (type !== 'loading') {
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 5000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
